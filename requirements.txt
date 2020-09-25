@@ -1,1 +1,7 @@
+fasttext
 jupyter
+matplotlib
+nltk
+pandas
+scikit-learn
+tqdm
