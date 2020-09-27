@@ -6,7 +6,9 @@ from abc import ABC, abstractmethod
 from copy import copy
 from typing import Union, Callable, List
 from itertools import product
+from tqdm import tqdm
 
+import numpy as np
 from nltk import TweetTokenizer, SnowballStemmer
 from nltk.corpus import stopwords
 
@@ -238,11 +240,14 @@ def split_snake_case(input):
         result = splitter.split_snake_case(word)
         if len(result) > 1:
             new_tokens = new_tokens + result
+            continue
+
+        new_tokens.append(word)
 
     return new_tokens
 
 
-class SnakeCaseSplitting(mp_transformer):
+class SnakeCaseSplitter(mp_transformer):
 
     def __init__(self, processes: Union[None, int] = None, verbosity: int = 1):
         super().__init__(processes, verbosity)
@@ -329,3 +334,42 @@ class stemmer(mp_transformer):
     def post_process(self, result):
         self.X['tokens'] = result
         return self.X
+
+
+def vectorize(input):
+    tokens, word2vec = input
+    return [word2vec.get_word_vector(word) for word in input]
+
+
+class Vectorizer():
+
+    def __init__(self, word2vecModel, max_len: int, verbosity: int = 1):
+        self.verbosity = verbosity
+        self.max_len = max_len
+        self.word2vecModel = word2vecModel
+
+    def fit(self, X):
+        pass
+
+    def transform(self, X):
+        if self.verbosity > 0:
+            logging.info(f'{self.__class__.__name__} transforming data.')
+
+        def load_tokens(words):
+            tokens = []
+            for n in range(self.max_len):
+                if n < len(words):
+                    tokens.append(self.word2vecModel.get_word_vector(words[n]))
+                    continue
+                tokens.append(np.array(300*[0.0]))
+
+            return tokens
+
+        tokens = X['tokens']
+        if self.verbosity > 0:
+            tqdm.pandas()
+            X['vectors'] = tokens.progress_apply(lambda x: load_tokens(x))
+        else:
+            X['vectors'] = tokens.apply(lambda x: [self.word2vecModel.get_word_vector(word) for word in x])
+
+        return X
