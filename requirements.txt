@@ -6,3 +6,4 @@ pandas
 scikit-learn
 tensorflow
 tqdm
+transformers==3.1
